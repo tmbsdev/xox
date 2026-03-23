@@ -13,8 +13,32 @@
       <div class="mode-toggle" role="radiogroup" aria-label="Game mode">
         <button class="mode-btn active" data-mode="pvp" role="radio" aria-checked="true">PvP</button>
         <button class="mode-btn" data-mode="pvc" role="radio" aria-checked="false">vs CPU</button>
+        <button class="mode-btn" data-mode="online" role="radio" aria-checked="false">Online</button>
       </div>
     </header>
+
+    <!-- Online lobby panel -->
+    <div class="online-panel" id="online-panel" hidden>
+      <div class="online-lobby" id="online-lobby">
+        <button class="btn btn-primary" id="btn-create-room">Create Room</button>
+        <div class="join-form">
+          <input type="text" id="input-room-code" class="input-code" placeholder="Room code" maxlength="6" aria-label="Room code">
+          <button class="btn btn-primary" id="btn-join-room">Join</button>
+        </div>
+      </div>
+      <div class="online-info" id="online-info" hidden>
+        <div class="room-code-display">
+          <span class="label">Room</span>
+          <span class="code" id="display-room-code"></span>
+          <button class="btn-copy" id="btn-copy-code" aria-label="Copy room code" title="Copy code">Copy</button>
+        </div>
+        <div class="connection-status" id="connection-status">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-text">Waiting for opponent…</span>
+        </div>
+        <div class="player-role" id="player-role"></div>
+      </div>
+    </div>
 
     <div class="scoreboard" aria-live="polite">
       <div class="score-item">
@@ -58,6 +82,7 @@
     </div>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

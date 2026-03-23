@@ -1,10 +1,15 @@
-FROM nginx:alpine
+FROM node:20-alpine
 
-COPY index.html /usr/share/nginx/html/
-COPY styles.css /usr/share/nginx/html/
-COPY app.js /usr/share/nginx/html/
-COPY public/ /usr/share/nginx/html/public/
+WORKDIR /app
 
-EXPOSE 80
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
 
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost/ || exit 1
+COPY server.js ./
+COPY public/ ./public/
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost:3000/ || exit 1
+
+CMD ["node", "server.js"]
