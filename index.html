@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XOX – Tic-Tac-Toe</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Tic-Tac-Toe</h1>
+      <div class="mode-toggle" role="radiogroup" aria-label="Game mode">
+        <button class="mode-btn active" data-mode="pvp" role="radio" aria-checked="true">PvP</button>
+        <button class="mode-btn" data-mode="pvc" role="radio" aria-checked="false">vs CPU</button>
+      </div>
+    </header>
+
+    <div class="scoreboard" aria-live="polite">
+      <div class="score-item">
+        <span class="score-label">X</span>
+        <span class="score-value" id="score-x">0</span>
+      </div>
+      <div class="score-item">
+        <span class="score-label">Draw</span>
+        <span class="score-value" id="score-draw">0</span>
+      </div>
+      <div class="score-item">
+        <span class="score-label">O</span>
+        <span class="score-value" id="score-o">0</span>
+      </div>
+    </div>
+
+    <div class="turn-indicator" aria-live="polite" id="turn-indicator">X's turn</div>
+
+    <div class="board" id="board" role="grid" aria-label="Tic-Tac-Toe board">
+      <button class="cell" data-index="0" role="gridcell" aria-label="Row 1, Column 1, empty"></button>
+      <button class="cell" data-index="1" role="gridcell" aria-label="Row 1, Column 2, empty"></button>
+      <button class="cell" data-index="2" role="gridcell" aria-label="Row 1, Column 3, empty"></button>
+      <button class="cell" data-index="3" role="gridcell" aria-label="Row 2, Column 1, empty"></button>
+      <button class="cell" data-index="4" role="gridcell" aria-label="Row 2, Column 2, empty"></button>
+      <button class="cell" data-index="5" role="gridcell" aria-label="Row 2, Column 3, empty"></button>
+      <button class="cell" data-index="6" role="gridcell" aria-label="Row 3, Column 1, empty"></button>
+      <button class="cell" data-index="7" role="gridcell" aria-label="Row 3, Column 2, empty"></button>
+      <button class="cell" data-index="8" role="gridcell" aria-label="Row 3, Column 3, empty"></button>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-restart" aria-label="Restart round">Restart Round</button>
+      <button class="btn btn-secondary" id="btn-reset" aria-label="Reset all scores">Reset Score</button>
+    </div>
+
+    <div class="result-overlay" id="result-overlay" aria-live="assertive" hidden>
+      <div class="result-card">
+        <p class="result-text" id="result-text"></p>
+        <button class="btn btn-primary" id="btn-play-again">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
