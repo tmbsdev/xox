@@ -16,6 +16,7 @@
   --yellow:   #eab308;
   --radius:   12px;
   --transition: .2s ease;
+  --cell-size: clamp(80px, 25vw, 110px);
 }
 
 html{font-size:16px}
@@ -203,12 +204,11 @@ h1{
 /* ── Scoreboard ──────────────────────────────────────── */
 .scoreboard{
   display:flex;
-  gap:1.5rem;
+  gap:2.5rem;
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:var(--radius);
   padding:.75rem 1.5rem;
-  width:100%;
   justify-content:center;
 }
 .score-item{display:flex;flex-direction:column;align-items:center;gap:.15rem}
@@ -230,17 +230,26 @@ h1{
 .turn-indicator.turn-x{color:var(--x-color);border-color:var(--x-color)}
 .turn-indicator.turn-o{color:var(--o-color);border-color:var(--o-color)}
 
+/* ── Helper Text ─────────────────────────────────────── */
+.helper-text{
+  font-size:.78rem;
+  color:var(--text-dim);
+  text-align:center;
+  margin:-.25rem 0;
+}
+
 /* ── Board ───────────────────────────────────────────── */
 .board{
   display:grid;
-  grid-template-columns:repeat(3,1fr);
+  grid-template-columns:repeat(3, var(--cell-size));
+  grid-template-rows:repeat(3, var(--cell-size));
   gap:8px;
-  width:100%;
-  aspect-ratio:1;
-  max-width:340px;
+  justify-content:center;
 }
 
 .cell{
+  width:var(--cell-size);
+  height:var(--cell-size);
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:var(--radius);
@@ -251,7 +260,7 @@ h1{
   display:flex;
   align-items:center;
   justify-content:center;
-  transition:background var(--transition),border-color var(--transition),transform .15s ease,box-shadow var(--transition);
+  transition:background var(--transition),border-color var(--transition),transform .15s ease,box-shadow var(--transition),opacity .3s ease;
   -webkit-tap-highlight-color:transparent;
   user-select:none;
 }
@@ -276,11 +285,18 @@ h1{
   100%{transform:scale(1);opacity:1}
 }
 
+/* Predictive fade for next removal */
+.cell.fading{
+  opacity:.4;
+  border-style:dashed;
+}
+
 /* win highlight */
 .cell.win{
   border-color:var(--accent);
   box-shadow:0 0 18px var(--accent-glow);
   animation:glow 1s ease infinite alternate;
+  opacity:1;
 }
 @keyframes glow{
   to{box-shadow:0 0 26px var(--accent-glow)}
@@ -335,7 +351,5 @@ h1{
 @media(min-width:500px){
   .container{padding:2rem}
   h1{font-size:2.25rem}
-  .board{max-width:380px}
   .cell{font-size:3rem;border-radius:16px}
-  .actions{max-width:380px}
 }

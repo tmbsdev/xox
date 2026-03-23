@@ -46,16 +46,14 @@
         <span class="score-value" id="score-x">0</span>
       </div>
       <div class="score-item">
-        <span class="score-label">Draw</span>
-        <span class="score-value" id="score-draw">0</span>
-      </div>
-      <div class="score-item">
         <span class="score-label">O</span>
         <span class="score-value" id="score-o">0</span>
       </div>
     </div>
 
     <div class="turn-indicator" aria-live="polite" id="turn-indicator">X's turn</div>
+
+    <p class="helper-text">Each player keeps max 3 marks; oldest mark disappears on next move.</p>
 
     <div class="board" id="board" role="grid" aria-label="Tic-Tac-Toe board">
       <button class="cell" data-index="0" role="gridcell" aria-label="Row 1, Column 1, empty"></button>

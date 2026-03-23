@@ -8,11 +8,14 @@
     [0,4,8],[2,4,6]          // diags
   ];
 
+  const MAX_MARKS = 3;
+
   let board = Array(9).fill(null);
   let currentPlayer = "X";
   let gameOver = false;
   let mode = "pvp"; // pvp | pvc | online
-  let scores = { X: 0, O: 0, draw: 0 };
+  let scores = { X: 0, O: 0 };
+  let moveHistory = { X: [], O: [] };
 
   // ── Online state ──────────────────────────────────
   let socket = null;
@@ -25,7 +28,6 @@
   const turnIndicator = document.getElementById("turn-indicator");
   const scoreX = document.getElementById("score-x");
   const scoreO = document.getElementById("score-o");
-  const scoreDraw = document.getElementById("score-draw");
   const btnRestart = document.getElementById("btn-restart");
   const btnReset = document.getElementById("btn-reset");
   const overlay = document.getElementById("result-overlay");
@@ -97,27 +99,65 @@
   }
 
   function placeMove(i) {
-    board[i] = currentPlayer;
-    const cell = cells[i];
-    cell.textContent = currentPlayer;
-    cell.classList.add(currentPlayer.toLowerCase(), "placed");
-    cell.disabled = true;
+    const player = currentPlayer;
+    const history = moveHistory[player];
 
+    // Aging: remove oldest mark if player already has MAX_MARKS
+    let removedIndex = null;
+    if (history.length >= MAX_MARKS) {
+      removedIndex = history.shift();
+      board[removedIndex] = null;
+      clearCell(removedIndex);
+    }
+
+    // Place new mark
+    board[i] = player;
+    history.push(i);
+    renderCell(i, player);
+
+    const winLine = checkWin(player);
+    if (winLine) {
+      endGame(player, winLine);
+      return;
+    }
+
+    currentPlayer = currentPlayer === "X" ? "O" : "X";
+    updateFadingMarks();
+    updateTurnIndicator();
+  }
+
+  function renderCell(i, player) {
+    const cell = cells[i];
+    cell.textContent = player;
+    cell.classList.add(player.toLowerCase(), "placed");
+    cell.disabled = true;
     const row = Math.floor(i / 3) + 1;
     const col = (i % 3) + 1;
-    cell.setAttribute("aria-label", `Row ${row}, Column ${col}, ${currentPlayer}`);
+    cell.setAttribute("aria-label", `Row ${row}, Column ${col}, ${player}`);
+  }
 
-    const winLine = checkWin(currentPlayer);
-    if (winLine) {
-      endGame(currentPlayer, winLine);
-      return;
+  function clearCell(i) {
+    const cell = cells[i];
+    cell.textContent = "";
+    cell.className = "cell";
+    cell.disabled = false;
+    const row = Math.floor(i / 3) + 1;
+    const col = (i % 3) + 1;
+    cell.setAttribute("aria-label", `Row ${row}, Column ${col}, empty`);
+  }
+
+  // ── Fading marks (predictive removal indicator) ────
+  function updateFadingMarks() {
+    // Clear all fading classes first
+    cells.forEach(c => c.classList.remove("fading"));
+
+    // For each player, if they have MAX_MARKS, their oldest mark fades
+    for (const p of ["X", "O"]) {
+      const history = moveHistory[p];
+      if (history.length >= MAX_MARKS) {
+        cells[history[0]].classList.add("fading");
+      }
     }
-    if (board.every(c => c !== null)) {
-      endGame(null);
-      return;
-    }
-    currentPlayer = currentPlayer === "X" ? "O" : "X";
-    updateTurnIndicator();
   }
 
   // ── Win check ──────────────────────────────────────
@@ -128,18 +168,12 @@
   // ── End game ───────────────────────────────────────
   function endGame(winner, winLine) {
     gameOver = true;
-    cells.forEach(c => (c.disabled = true));
+    cells.forEach(c => { c.disabled = true; c.classList.remove("fading"); });
 
-    if (winner) {
-      scores[winner]++;
-      winLine.forEach(i => cells[i].classList.add("win"));
-      resultText.textContent = `${winner} wins!`;
-      resultText.className = "result-text " + (winner === "X" ? "x-wins" : "o-wins");
-    } else {
-      scores.draw++;
-      resultText.textContent = "It's a draw!";
-      resultText.className = "result-text";
-    }
+    scores[winner]++;
+    winLine.forEach(i => cells[i].classList.add("win"));
+    resultText.textContent = `${winner} wins!`;
+    resultText.className = "result-text " + (winner === "X" ? "x-wins" : "o-wins");
     updateScoreboard();
     setTimeout(() => { overlay.hidden = false; }, 600);
   }
@@ -152,17 +186,29 @@
   }
 
   function getBestMove() {
+    // Simulate what the board would look like after CPU's aging removal
+    const cpuHistory = moveHistory["O"];
+    let simBoard = board.slice();
+    if (cpuHistory.length >= MAX_MARKS) {
+      simBoard[cpuHistory[0]] = null;
+    }
+
+    // 1. Win if possible (accounting for aging)
     for (const line of WIN_LINES) {
-      const m = findTwoOf(line, "O");
+      const m = findTwoOfSim(line, "O", simBoard);
       if (m !== -1) return m;
     }
+    // 2. Block opponent win
     for (const line of WIN_LINES) {
       const m = findTwoOf(line, "X");
-      if (m !== -1) return m;
+      if (m !== -1 && board[m] === null) return m;
     }
+    // 3. Take center
     if (board[4] === null) return 4;
+    // 4. Take random corner
     const corners = [0, 2, 6, 8].filter(i => board[i] === null);
     if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
+    // 5. Take any empty
     const empty = board.map((v, i) => v === null ? i : -1).filter(i => i !== -1);
     return empty.length ? empty[Math.floor(Math.random() * empty.length)] : -1;
   }
@@ -171,6 +217,16 @@
     const vals = line.map(i => board[i]);
     if (vals.filter(v => v === player).length === 2 && vals.includes(null)) {
       return line[vals.indexOf(null)];
+    }
+    return -1;
+  }
+
+  function findTwoOfSim(line, player, simBoard) {
+    const vals = line.map(i => simBoard[i]);
+    if (vals.filter(v => v === player).length === 2 && vals.includes(null)) {
+      const idx = line[vals.indexOf(null)];
+      // Only consider cells that are actually empty on current board
+      if (board[idx] === null) return idx;
     }
     return -1;
   }
@@ -194,13 +250,13 @@
   function updateScoreboard() {
     scoreX.textContent = scores.X;
     scoreO.textContent = scores.O;
-    scoreDraw.textContent = scores.draw;
   }
 
   function resetBoard() {
     board = Array(9).fill(null);
     currentPlayer = "X";
     gameOver = false;
+    moveHistory = { X: [], O: [] };
     overlay.hidden = true;
     cells.forEach((cell, i) => {
       cell.textContent = "";
@@ -234,7 +290,7 @@
     if (mode === "online" && socket) {
       socket.emit("reset-scores");
     } else {
-      scores = { X: 0, O: 0, draw: 0 };
+      scores = { X: 0, O: 0 };
       updateScoreboard();
       resetBoard();
     }
@@ -280,8 +336,15 @@
     });
 
     socket.on("move-made", (data) => {
-      // Apply the move locally
       board = data.board;
+      moveHistory = data.moveHistory;
+
+      // Clear removed cell if any
+      if (data.removedIndex !== null && data.removedIndex !== undefined) {
+        clearCell(data.removedIndex);
+      }
+
+      // Render placed cell
       const cell = cells[data.index];
       cell.textContent = data.player;
       cell.classList.add(data.player.toLowerCase(), "placed");
@@ -294,22 +357,15 @@
       if (data.winner) {
         gameOver = true;
         scores = data.scores;
-        cells.forEach(c => (c.disabled = true));
+        cells.forEach(c => { c.disabled = true; c.classList.remove("fading"); });
         data.winLine.forEach(i => cells[i].classList.add("win"));
         resultText.textContent = `${data.winner} wins!`;
         resultText.className = "result-text " + (data.winner === "X" ? "x-wins" : "o-wins");
         updateScoreboard();
         setTimeout(() => { overlay.hidden = false; }, 600);
-      } else if (data.draw) {
-        gameOver = true;
-        scores = data.scores;
-        cells.forEach(c => (c.disabled = true));
-        resultText.textContent = "It's a draw!";
-        resultText.className = "result-text";
-        updateScoreboard();
-        setTimeout(() => { overlay.hidden = false; }, 600);
       } else {
         currentPlayer = data.currentPlayer;
+        updateFadingMarks();
         updateTurnIndicator();
       }
     });
@@ -321,7 +377,7 @@
     });
 
     socket.on("scores-reset", () => {
-      scores = { X: 0, O: 0, draw: 0 };
+      scores = { X: 0, O: 0 };
       updateScoreboard();
       resetBoardLocal();
     });
@@ -331,6 +387,7 @@
     board = Array(9).fill(null);
     currentPlayer = "X";
     gameOver = false;
+    moveHistory = { X: [], O: [] };
     overlay.hidden = true;
     cells.forEach((cell, i) => {
       cell.textContent = "";
@@ -348,6 +405,7 @@
     currentPlayer = state.currentPlayer;
     gameOver = state.gameOver;
     scores = state.scores;
+    moveHistory = state.moveHistory || { X: [], O: [] };
     opponentJoined = state.playerCount >= 2;
 
     updateScoreboard();
@@ -361,6 +419,7 @@
       const col = (i % 3) + 1;
       cell.setAttribute("aria-label", `Row ${row}, Column ${col}, ${val || "empty"}`);
     });
+    updateFadingMarks();
     updateTurnIndicator();
   }
 

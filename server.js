@@ -27,7 +27,8 @@ function createRoom() {
     board: Array(9).fill(null),
     currentPlayer: "X",
     gameOver: false,
-    scores: { X: 0, O: 0, draw: 0 },
+    scores: { X: 0, O: 0 },
+    moveHistory: { X: [], O: [] },
   });
   return code;
 }
@@ -98,32 +99,38 @@ io.on("connection", (socket) => {
     if (room.board[index] !== null) return;
     if (room.currentPlayer !== player.role) return;
 
-    room.board[index] = player.role;
+    const role = player.role;
+    const history = room.moveHistory[role];
 
-    const winLine = checkWin(room.board, player.role);
-    if (winLine) {
-      room.gameOver = true;
-      room.scores[player.role]++;
-      io.to(roomCode).emit("move-made", {
-        index, player: player.role, board: room.board,
-        winner: player.role, winLine, scores: room.scores,
-      });
-      return;
+    // Aging: remove oldest mark if player already has 3
+    let removedIndex = null;
+    if (history.length >= 3) {
+      removedIndex = history.shift();
+      room.board[removedIndex] = null;
     }
 
-    if (room.board.every(c => c !== null)) {
+    // Place new mark
+    room.board[index] = role;
+    history.push(index);
+
+    const winLine = checkWin(room.board, role);
+    if (winLine) {
       room.gameOver = true;
-      room.scores.draw++;
+      room.scores[role]++;
       io.to(roomCode).emit("move-made", {
-        index, player: player.role, board: room.board,
-        winner: null, draw: true, scores: room.scores,
+        index, player: role, board: room.board,
+        removedIndex,
+        moveHistory: room.moveHistory,
+        winner: role, winLine, scores: room.scores,
       });
       return;
     }
 
     room.currentPlayer = room.currentPlayer === "X" ? "O" : "X";
     io.to(roomCode).emit("move-made", {
-      index, player: player.role, board: room.board,
+      index, player: role, board: room.board,
+      removedIndex,
+      moveHistory: room.moveHistory,
       currentPlayer: room.currentPlayer,
     });
   });
@@ -136,6 +143,7 @@ io.on("connection", (socket) => {
     room.board = Array(9).fill(null);
     room.currentPlayer = "X";
     room.gameOver = false;
+    room.moveHistory = { X: [], O: [] };
     io.to(roomCode).emit("round-restarted", { scores: room.scores });
   });
 
@@ -147,7 +155,8 @@ io.on("connection", (socket) => {
     room.board = Array(9).fill(null);
     room.currentPlayer = "X";
     room.gameOver = false;
-    room.scores = { X: 0, O: 0, draw: 0 };
+    room.scores = { X: 0, O: 0 };
+    room.moveHistory = { X: [], O: [] };
     io.to(roomCode).emit("scores-reset");
   });
 
@@ -176,6 +185,7 @@ function roomState(room) {
     gameOver: room.gameOver,
     scores: room.scores,
     playerCount: room.players.length,
+    moveHistory: room.moveHistory,
   };
 }
 
