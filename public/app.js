@@ -44,9 +44,24 @@
   const inputRoomCode = document.getElementById("input-room-code");
   const displayRoomCode = document.getElementById("display-room-code");
   const btnCopyCode = document.getElementById("btn-copy-code");
+  const btnCopyInvite = document.getElementById("btn-copy-invite");
+  const btnShareInvite = document.getElementById("btn-share-invite");
   const statusDot = document.getElementById("status-dot");
   const statusText = document.getElementById("status-text");
   const playerRole = document.getElementById("player-role");
+
+  // ── Invite link helper ─────────────────────────────
+  function getInviteUrl(code) {
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.searchParams.set("room", code);
+    return url.toString();
+  }
+
+  // Show share button if navigator.share is available
+  if (navigator.share) {
+    btnShareInvite.hidden = false;
+  }
 
   // ── Mode switching ─────────────────────────────────
   modeBtns.forEach(btn => {
@@ -511,6 +526,77 @@
     });
   });
 
+  btnCopyInvite.addEventListener("click", () => {
+    const url = getInviteUrl(displayRoomCode.textContent);
+    navigator.clipboard.writeText(url).then(() => {
+      btnCopyInvite.textContent = "Copied!";
+      setTimeout(() => { btnCopyInvite.textContent = "Copy Invite Link"; }, 1500);
+    });
+  });
+
+  btnShareInvite.addEventListener("click", () => {
+    const code = displayRoomCode.textContent;
+    const url = getInviteUrl(code);
+    navigator.share({
+      title: "XOX – Tic-Tac-Toe",
+      text: `Join my game! Room code: ${code}`,
+      url: url
+    }).catch(() => {});
+  });
+
+  // ── Auto-join from URL ────────────────────────────
+  function tryAutoJoinFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const code = (params.get("room") || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6);
+    if (!code) return;
+
+    // Clean URL without reloading
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, "", cleanUrl);
+
+    // Switch to online mode
+    mode = "online";
+    modeBtns.forEach(b => {
+      const isOnline = b.dataset.mode === "online";
+      b.classList.toggle("active", isOnline);
+      b.setAttribute("aria-checked", isOnline);
+    });
+    onlinePanel.hidden = false;
+
+    // Show lobby with feedback while connecting
+    inputRoomCode.value = code;
+    onlineLobby.hidden = false;
+    onlineInfo.hidden = true;
+
+    // Connect and attempt join
+    connectSocket();
+    setStatus("waiting", "Joining room " + code + "…");
+    socket.emit("join-room", code, (res) => {
+      if (res.error) {
+        setStatus("disconnected", res.error);
+        onlineLobby.hidden = false;
+        onlineInfo.hidden = true;
+        return;
+      }
+      roomCode = code;
+      myRole = res.role;
+      showRoomInfo(roomCode, myRole);
+      if (res.state) {
+        syncState(res.state);
+        if (res.state.playerCount >= 2) {
+          setStatus("connected", "Game in progress");
+        } else {
+          setStatus("waiting", "Waiting for opponent…");
+        }
+      } else {
+        opponentJoined = false;
+        setStatus("waiting", "Waiting for opponent…");
+        updateTurnIndicator();
+      }
+    });
+  }
+
   // ── Init ───────────────────────────────────────────
   updateTurnIndicator();
+  tryAutoJoinFromUrl();
 })();

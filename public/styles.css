@@ -175,6 +175,31 @@ h1{
   color:var(--text);
 }
 
+.invite-actions{
+  display:flex;
+  gap:.5rem;
+  width:100%;
+  justify-content:center;
+}
+.btn-invite{
+  flex:none;
+  padding:.45rem .9rem;
+  font-size:.78rem;
+  font-weight:600;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  background:var(--surface);
+  color:var(--text-dim);
+  cursor:pointer;
+  transition:background var(--transition),color var(--transition),border-color var(--transition);
+}
+.btn-invite:hover{
+  background:#22253a;
+  color:var(--text);
+  border-color:var(--accent);
+}
+.btn-invite[hidden]{display:none}
+
 .connection-status{
   display:flex;
   align-items:center;
